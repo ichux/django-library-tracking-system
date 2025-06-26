@@ -1,45 +1,52 @@
-version: '3.8'
+name: library
 
 services:
-  db:
-    image: postgres:13
-    environment:
-      POSTGRES_DB: library_db
-      POSTGRES_USER: library_user
-      POSTGRES_PASSWORD: library_password
+  if_lib_db:
+    image: postgres:17.3-bookworm
+    restart: always
+    container_name: cf_lib_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  redis:
-    image: redis:6
-    ports:
-      - "6379:6379"
-
-  web:
-    build: .
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
-    volumes:
-      - .:/code
-    ports:
-      - "8000:8000"
+      - ./administer/psql:/docker-entrypoint-initdb.d
     env_file:
       - .env
-    depends_on:
-      - db
-      - redis
 
-  celery:
-    build: .
-    command: celery -A library_system worker -l info
+  if_lib_redis:
+    image: redis:7.2.4-bookworm
+    restart: always
+    container_name: cf_lib_redis
+
+  if_lib_celery: &if_lib_celery
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PC_USER: ${PC_USER}
+    command: ["./administer/runner.sh", "celery"]
+    restart: always
+    container_name: cf_lib_celery
     volumes:
       - .:/code
     env_file:
       - .env
-    depends_on:
-      - web
-      - redis
+
+  if_lib_beats:
+    <<: *if_lib_celery
+    command: ["./administer/runner.sh", "beat"]
+    restart: always
+    container_name: cf_lib_beats
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+
+  if_lib_web:
+    <<: *if_lib_celery
+    command: ["./administer/web.sh"]
+    restart: always
+    container_name: cf_lib_web
+    ports:
+      - "8000:80"
 
 volumes:
   postgres_data:
