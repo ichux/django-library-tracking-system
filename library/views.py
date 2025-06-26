@@ -84,7 +84,7 @@ class LoanViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def extend_due_date(self, request, pk=None):
         try:
-            self.get_object()
+            loan = self.get_object()
         except Loan.DoesNotExist:
             return Response(
                 {"error": "Active load does not exist"},
