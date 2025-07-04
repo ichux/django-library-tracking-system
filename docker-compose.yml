@@ -35,10 +35,6 @@ services:
     command: ["./administer/runner.sh", "beat"]
     restart: always
     container_name: cf_lib_beats
-    volumes:
-      - .:/code
-    env_file:
-      - .env
 
   if_lib_web:
     <<: *if_lib_celery
